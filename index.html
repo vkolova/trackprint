@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="bg">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Trackprint — GPX Poster Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,700&family=Inter+Tight:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;800&family=Sofia+Sans+Condensed:wght@400;500;600;800&family=Montserrat:wght@400;600;800&family=Commissioner:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <link href="style.css" rel="stylesheet">
 </head>
@@ -53,7 +53,7 @@
     </select></label>
     <div class="row">
       <label>Margin<input id="margin" type="range" min="0" max="12" value="6"></label>
-      <label>Font<select id="font"><option value="Archivo">Archivo</option><option value="Inter Tight">Inter Tight</option><option value="Fraunces">Fraunces (serif)</option><option value="JetBrains Mono">JetBrains Mono</option></select></label>
+      <label>Font<select id="font"><option value="Sofia Sans">Sofia Sans</option><option value="Sofia Sans Condensed">Sofia Sans Condensed</option><option value="Montserrat">Montserrat</option><option value="Commissioner">Commissioner</option><option value="Source Serif 4">Source Serif 4 (serif)</option></select></label>
     </div>
     <div class="row">
       <label class="color">Paper<input id="bg" type="color" value="#ffffff"></label>
@@ -69,13 +69,14 @@
       <label class="check"><input id="labels" type="checkbox"> Place labels</label>
       <label class="check"><input id="coords" type="checkbox" checked> Coordinates</label>
     </div>
+    <label class="check"><input id="credit" type="checkbox"> Map credit line</label>
     <button class="ghost" id="fit">Re-center on route</button>
   </section>
 
   <section>
     <h3>Route</h3>
     <div class="row">
-      <label class="color">Color<input id="rc" type="color" value="#e0182d"></label>
+      <label class="color">Color<input id="rc" type="color" value="#fc5200"></label>
       <label>Width<input id="rw" type="range" min="1" max="12" value="4" step="0.5"></label>
     </div>
     <div class="row">
@@ -86,17 +87,15 @@
 
   <section>
     <h3>Stats</h3>
-    <div class="chips">
-      <label class="check"><input type="checkbox" data-stat="distance" checked> Distance</label>
-      <label class="check"><input type="checkbox" data-stat="elevation" checked> Elevation</label>
-      <label class="check"><input type="checkbox" data-stat="time" checked> Time</label>
-      <label class="check"><input type="checkbox" data-stat="pace" checked> Pace</label>
-    </div>
+    <p class="note">Tick to show. Leave the field empty to use the GPX value, or type your own.</p>
+    <div class="stat"><input type="checkbox" data-stat="distance" checked aria-label="Show distance"><span>Distance</span><input id="ovDistance" type="text" inputmode="decimal" placeholder="km"></div>
+    <div class="stat"><input type="checkbox" data-stat="elevation" checked aria-label="Show elevation"><span>Elevation</span><input id="ovElevation" type="text" inputmode="decimal" placeholder="m"></div>
+    <div class="stat"><input type="checkbox" data-stat="time" checked aria-label="Show time"><span>Time</span><input id="ovTime" type="text" placeholder="h:mm:ss"></div>
+    <div class="stat"><input type="checkbox" data-stat="pace" checked aria-label="Show pace"><span>Pace</span><input id="ovPace" type="text" placeholder="m:ss"></div>
     <div class="row">
       <label>Pace unit<select id="paceUnit"><option value="pace">min/km</option><option value="speed">km/h</option></select></label>
-      <label>Time<select id="timeMode"><option value="elapsed">Elapsed</option><option value="moving">Moving</option></select></label>
+      <label>GPX time<select id="timeMode"><option value="elapsed">Elapsed</option><option value="moving">Moving</option></select></label>
     </div>
-    <label>Override time (optional, e.g. 4:13:20)<input id="timeOverride" type="text" placeholder="from GPX"></label>
   </section>
 
   <section>
@@ -106,7 +105,7 @@
       <label>Position<select id="profPos"><option value="overlay">On map (bottom)</option><option value="below">Below map</option></select></label>
     </div>
     <div class="row">
-      <label class="color">Color<input id="pc" type="color" value="#e0182d"></label>
+      <label class="color">Color<input id="pc" type="color" value="#fc5200"></label>
       <label class="check"><input id="profLabels" type="checkbox" checked> Min / max</label>
     </div>
   </section>
@@ -127,7 +126,7 @@
 <main class="stage" id="stage">
   <div class="poster" id="poster">
     <div id="map"></div>
-    <canvas id="overlay"></canvas>
+    <canvas id="overlay" lang="bg"></canvas>
   </div>
   <p class="hint">Drag and scroll the map to frame your route.</p>
 </main>

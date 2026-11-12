@@ -88,7 +88,7 @@ function sampleTrack() {
       ele: 520 + 380 * Math.sin(a / 2) ** 2 + 60 * Math.sin(5 * a) + 15 * Math.sin(17 * a),
       time: t0 + i * 17000 });
   }
-  return buildTrack(pts, 'Sample Trail Loop 2026');
+  return buildTrack(pts, 'Примерен трейл 2026');
 }
 
 /* ---------------- Formatting ---------------- */
@@ -97,19 +97,35 @@ function parseDur(str) {
   const p = str.trim().split(':').map(Number); if (!p.length || p.some(isNaN)) return null;
   return p.reduce((a, v) => a * 60 + v, 0) * (p.length === 2 ? 60 : 1);
 }
-function timeSeconds() {
-  const o = parseDur($('timeOverride').value || '');
-  if (o) return o;
-  const t = state.track; return $('timeMode').value === 'moving' && t.moving ? t.moving : t.elapsed;
+const num = (v) => { const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : null; };
+function setPlaceholders() {
+  const t = state.track; if (!t) return;
+  const km = t.dist / 1000, sec = gpxSeconds();
+  $('ovDistance').placeholder = `${km.toFixed(2)} km`;
+  $('ovElevation').placeholder = t.hasEle ? `${Math.round(t.gain)} m` : 'm';
+  $('ovTime').placeholder = sec ? fmtClock(sec) : 'h:mm:ss';
+  $('ovPace').placeholder = $('paceUnit').value === 'speed' ? 'km/h' : 'm:ss /km';
 }
+const fmtClock = (s) => { s = Math.round(s); return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+const gpxSeconds = () => { const t = state.track; return $('timeMode').value === 'moving' && t.moving ? t.moving : t.elapsed; };
+function timeSeconds() { return parseDur($('ovTime').value || '') || gpxSeconds(); }
 function getStats() {
-  const t = state.track, out = [], km = t.dist / 1000, sec = timeSeconds();
-  if (state.stats.distance) out.push(['Distance', km >= 100 ? `${km.toFixed(0)} km` : `${km.toFixed(km < 10 ? 2 : 1)} km`]);
-  if (state.stats.elevation && t.hasEle) out.push(['Elevation gain', `${Math.round(t.gain)} m`]);
-  if (state.stats.time && sec) out.push(['Time', fmtDur(sec)]);
-  if (state.stats.pace && sec && km) {
-    if ($('paceUnit').value === 'speed') out.push(['Speed', `${(km / (sec / 3600)).toFixed(1)} km/h`]);
-    else { const p = Math.round(sec / km); out.push(['Pace', `${Math.floor(p / 60)}:${String(p % 60).padStart(2, '0')} /km`]); }
+  const t = state.track, out = [], on = state.stats;
+  const oD = $('ovDistance').value.trim(), oE = $('ovElevation').value.trim(), oT = $('ovTime').value.trim(), oP = $('ovPace').value.trim();
+  const km = num(oD) ?? t.dist / 1000, sec = timeSeconds();
+  const kmTxt = (v) => `${v >= 100 ? v.toFixed(0) : v.toFixed(v < 10 ? 2 : 1).replace(/\.?0+$/, '')} km`;
+  if (on.distance) { const v = oD ? (/^[\d.,]+$/.test(oD) ? kmTxt(num(oD)) : oD) : kmTxt(km); out.push(['Distance', v]); }
+  if (on.elevation && (oE || t.hasEle)) out.push(['Elevation gain', oE ? (/^[\d.,]+$/.test(oE) ? `${Math.round(num(oE))} m` : oE) : `${Math.round(t.gain)} m`]);
+  if (on.time && (oT || sec)) out.push(['Time', oT && !parseDur(oT) ? oT : fmtDur(sec)]);
+  if (on.pace) {
+    const speed = $('paceUnit').value === 'speed';
+    if (oP) {
+      if (speed) out.push(['Speed', /^[\d.,]+$/.test(oP) ? `${num(oP).toFixed(1)} km/h` : oP]);
+      else out.push(['Pace', /^\d+:\d{1,2}$/.test(oP) ? `${oP} /km` : oP]);
+    } else if (sec && km) {
+      if (speed) out.push(['Speed', `${(km / (sec / 3600)).toFixed(1)} km/h`]);
+      else { const p = Math.round(sec / km); out.push(['Pace', `${Math.floor(p / 60)}:${String(p % 60).padStart(2, '0')} /km`]); }
+    }
   }
   return out;
 }
@@ -295,7 +311,7 @@ function drawProfile(ctx, r, k) {
     path(); ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, 2 * k); ctx.lineJoin = 'round'; ctx.stroke();
   }
   if ($('profLabels').checked) {
-    ctx.fillStyle = hexA($('fg').value, 0.65); ctx.font = `500 ${11 * k}px "JetBrains Mono"`; ctx.textAlign = 'left';
+    ctx.fillStyle = hexA($('fg').value, 0.65); ctx.font = `500 ${11 * k}px "Sofia Sans Condensed"`; ctx.textAlign = 'left';
     const lab = (txt, y) => { const tw = ctx.measureText(txt).width; ctx.fillStyle = hexA($('bg').value, 0.85); ctx.fillRect(x0 + 3 * k, y - 11 * k, tw + 8 * k, 15 * k); ctx.fillStyle = hexA($('fg').value, 0.75); ctx.fillText(txt, x0 + 7 * k, y); };
     lab(`${Math.round(t.maxE)} m`, top - 6 * k); lab(`${Math.round(t.minE)} m`, bot - 4 * k);
   }
@@ -305,7 +321,7 @@ const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${
 
 function drawOverlay(ctx, pxW) {
   const lay = layout(), k = pxW / U, H = lay.H * k, fg = $('fg').value, bg = $('bg').value, font = $('font').value;
-  const titleW = $('font').value === 'Fraunces' ? 700 : font === 'JetBrains Mono' ? 500 : font === 'Archivo' ? 800 : 600;
+  const titleW = font === 'Source Serif 4' ? 700 : 800;
   const title = $('title').value || 'Untitled activity', sub = [$('subtitle').value, dateText()].filter(Boolean).join('  ·  ');
   const stats = getStats(), m = lay.m, cx = (U / 2) * k;
   ctx.textBaseline = 'alphabetic';
@@ -324,7 +340,7 @@ function drawOverlay(ctx, pxW) {
     const n = stats.length, colW = maxW / n;
     stats.forEach(([lab, val], i) => {
       const sx = align === 'center' ? x - maxW / 2 + colW * (i + 0.5) : x - maxW + colW * (i + 0.5);
-      if (labelled) { ctx.fillStyle = hexA(fg, 0.5); ctx.font = `500 ${10.5 * k}px "JetBrains Mono"`; spaced(ctx, lab.toUpperCase(), sx, y, 1.2 * k, 'center'); }
+      if (labelled) { ctx.fillStyle = hexA(fg, 0.5); ctx.font = `500 ${10.5 * k}px "Sofia Sans Condensed"`; spaced(ctx, lab.toUpperCase(), sx, y, 1.2 * k, 'center'); }
       ctx.fillStyle = fg; ctx.font = `600 ${(labelled ? 19 : 24) * k}px "${font}"`; ctx.textAlign = 'center';
       ctx.fillText(val, sx, y + (labelled ? 28 * k : 0));
     });
@@ -336,14 +352,14 @@ function drawOverlay(ctx, pxW) {
     ctx.fillRect(cx - 36 * k, ty + 22 * k, 72 * k, 2 * k);
     let y = ty + 66 * k;
     if (stats.length) { ctx.font = `400 ${24 * k}px "${font}"`; ctx.textAlign = 'center'; ctx.fillText(stats.map((s) => s[1]).join('   ·   '), cx, y); y += 38 * k; }
-    ctx.fillStyle = hexA(fg, 0.7); ctx.font = `400 ${15 * k}px "JetBrains Mono"`;
+    ctx.fillStyle = hexA(fg, 0.7); ctx.font = `400 ${15 * k}px "Sofia Sans Condensed"`;
     const meta = [sub, $('coords').checked ? coordText(state.track.center) : ''].filter(Boolean);
     meta.forEach((t) => { spaced(ctx, t, cx, y, 1.5 * k, 'center'); y += 24 * k; });
   } else if (lay.L === 'editorial') {
     const lx = (m || 40) * k, half = (U - 2 * (m || 40)) * k;
     const sz = fitFont(ctx, title, titleW, font, 50 * k, half * 0.52);
     ctx.textAlign = 'left'; ctx.fillText(title, lx, fy + fh * 0.42);
-    ctx.fillStyle = hexA(fg, 0.65); ctx.font = `500 ${13 * k}px "JetBrains Mono"`;
+    ctx.fillStyle = hexA(fg, 0.65); ctx.font = `500 ${13 * k}px "Sofia Sans Condensed"`;
     spaced(ctx, sub.toUpperCase(), lx, fy + fh * 0.42 + 34 * k, 1.6 * k, 'left');
     if ($('coords').checked) spaced(ctx, coordText(state.track.center), lx, fy + fh * 0.42 + 56 * k, 1 * k, 'left');
     statLine(fy + fh * 0.36, true, 'right', lx + half, half * 0.46);
@@ -352,21 +368,31 @@ function drawOverlay(ctx, pxW) {
     const sz = fitFont(ctx, title.toUpperCase(), titleW, font, 60 * k, inner);
     ctx.textAlign = 'center'; ctx.fillText(title.toUpperCase(), cx, fy + fh * 0.32);
     let y = fy + fh * 0.32 + 34 * k;
-    if (sub) { ctx.fillStyle = hexA(fg, 0.6); ctx.font = `500 ${13 * k}px "JetBrains Mono"`; spaced(ctx, sub.toUpperCase(), cx, y, 1.6 * k, 'center'); }
+    if (sub) { ctx.fillStyle = hexA(fg, 0.6); ctx.font = `500 ${13 * k}px "Sofia Sans Condensed"`; spaced(ctx, sub.toUpperCase(), cx, y, 1.6 * k, 'center'); }
     statLine(y + 40 * k, true);
     void sz;
   }
-  ctx.fillStyle = hexA(fg, 0.45); ctx.font = `400 ${9 * k}px "Inter Tight"`; ctx.textAlign = 'center';
+  if (!$('credit').checked) return;
+  ctx.fillStyle = hexA(fg, 0.45); ctx.font = `400 ${9 * k}px "Sofia Sans"`; ctx.textAlign = 'center';
   ctx.fillText('Map data © OpenStreetMap contributors · Tiles: OpenFreeMap', cx, H - Math.max(m * 0.5, 14) * k - ($('frame').checked ? 8 * k : 0));
 }
 
+const fontsOk = new Set();
+function ensureFonts() {
+  const fam = $('font').value; if (fontsOk.has(fam)) return true;
+  Promise.all(['800', '700', '600', '400'].map((w) => document.fonts.load(`${w} 20px "${fam}"`, 'Първа')).concat(
+    document.fonts.load('500 20px "Sofia Sans Condensed"', 'Първа'), document.fonts.load('400 20px "Sofia Sans"', 'Първа')))
+    .then(() => { fontsOk.add(fam); draw(); });
+  return false;
+}
 let raf = 0;
 function draw() {
+  ensureFonts();
   cancelAnimationFrame(raf);
   raf = requestAnimationFrame(() => {
     const c = $('overlay'), P = $('poster'), dpr = devicePixelRatio || 1, r = P.getBoundingClientRect();
     c.width = r.width * dpr; c.height = r.height * dpr;
-    const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const ctx = c.getContext('2d'); ctx.lang = 'bg'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     P.style.background = $('bg').value;
     if (state.track) drawOverlay(ctx, r.width);
   });
@@ -379,7 +405,7 @@ async function renderPoster() {
   let outW = Math.round((w / 25.4) * dpi), outH = Math.round((h / 25.4) * dpi);
   const maxSide = 9000; if (Math.max(outW, outH) > maxSide) { const s = maxSide / Math.max(outW, outH); outW = Math.round(outW * s); outH = Math.round(outH * s); }
   const fam = $('font').value;
-  await Promise.all([document.fonts.load(`800 20px "${fam}"`), document.fonts.load(`600 20px "${fam}"`), document.fonts.load(`400 20px "${fam}"`), document.fonts.load('500 20px "JetBrains Mono"'), document.fonts.load('400 20px "Inter Tight"')]);
+  await Promise.all([...['800', '700', '600', '400'].map((w) => document.fonts.load(`${w} 20px "${fam}"`, 'Първа')), document.fonts.load('500 20px "Sofia Sans Condensed"', 'Първа'), document.fonts.load('400 20px "Sofia Sans"', 'Първа')]);
   const lay = layout(), scale = outW / previewW, oldPR = map.getPixelRatio();
   const gl = map.painter?.context?.gl; const maxTex = gl ? gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) : 8192;
   const cw = map.getContainer().clientWidth, chh = map.getContainer().clientHeight;
@@ -388,12 +414,13 @@ async function renderPoster() {
   map.setPixelRatio(pr); styleRoute();
   await new Promise((res) => { const t = setTimeout(res, 15000); map.once('idle', () => { clearTimeout(t); res(); }); map.triggerRepaint(); });
   const out = document.createElement('canvas'); out.width = outW; out.height = outH;
-  const ctx = out.getContext('2d');
+  out.lang = 'bg'; document.body.appendChild(out); out.style.display = 'none';
+  const ctx = out.getContext('2d'); ctx.lang = 'bg';
   ctx.fillStyle = $('bg').value; ctx.fillRect(0, 0, outW, outH);
   const k = outW / U;
   ctx.drawImage(map.getCanvas(), lay.map.x * k, lay.map.y * k, lay.map.w * k, lay.map.h * k);
   map.setPixelRatio(oldPR); styleRoute();
-  drawOverlay(ctx, outW);
+  drawOverlay(ctx, outW); out.remove();
   return { out, w, h };
 }
 const slug = () => ($('title').value || 'poster').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'poster';
@@ -422,6 +449,7 @@ function applyTrack(t, fileName) {
   $('title').value = t.name || (fileName || 'My activity').replace(/\.gpx$/i, '');
   if (t.start) $('date').value = t.start.toISOString().slice(0, 10);
   $('fileinfo').textContent = `${fileName || 'Sample'} · ${t.pts.length} pts · ${(t.dist / 1000).toFixed(1)} km`;
+  setPlaceholders();
   if (map && map.getSource('route')) map.getSource('route').setData(routeGeo());
   sizePoster(); fitRoute(false);
 }
@@ -455,11 +483,12 @@ function init() {
   d.addEventListener('drop', (e) => e.dataTransfer.files[0] && readFile(e.dataTransfer.files[0]));
   const relayout = ['size', 'orient', 'cw', 'ch', 'layout', 'margin', 'prof', 'profPos'];
   relayout.forEach((id) => $(id).addEventListener('input', () => { $('customRow').hidden = $('size').value !== 'custom'; sizePoster(); fitRoute(false); }));
-  ['title', 'subtitle', 'date', 'dateFmt', 'font', 'fg', 'frame', 'coords', 'paceUnit', 'timeMode', 'timeOverride', 'pc', 'profLabels'].forEach((id) => $(id).addEventListener('input', draw));
+  ['credit', 'title', 'subtitle', 'date', 'dateFmt', 'font', 'fg', 'frame', 'coords', 'paceUnit', 'timeMode', 'ovDistance', 'ovElevation', 'ovTime', 'ovPace', 'pc', 'profLabels'].forEach((id) => $(id).addEventListener('input', draw));
   $('bg').addEventListener('input', () => { if (state.styleId === 'blank') loadStyle(); draw(); });
   ['rc', 'rw', 'rstyle', 'markers'].forEach((id) => $(id).addEventListener('input', styleRoute));
   $('labels').addEventListener('change', loadStyle);
   document.querySelectorAll('[data-stat]').forEach((c) => c.addEventListener('change', () => { state.stats[c.dataset.stat] = c.checked; draw(); }));
+  ['paceUnit', 'timeMode'].forEach((id) => $(id).addEventListener('input', setPlaceholders));
   $('fit').onclick = () => fitRoute(true);
   $('png').onclick = () => doExport('png'); $('pdf').onclick = () => doExport('pdf');
   addEventListener('resize', sizePoster);
